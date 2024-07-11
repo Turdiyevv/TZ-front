@@ -12,11 +12,11 @@
             <el-form-item
               label="number"
               prop="number"
-              :rules="[
-                { required: true, message: 'number is required' },
-                { min: 13, message: 'number must be a number' },
-              ]"
             >
+<!--              :rules="[-->
+<!--                { required: true, message: 'number is required' },-->
+<!--                { min: 13, message: 'number must be a number' },-->
+<!--              ]"-->
               <el-input clearable
                 v-model="form.number"
                 @input="form.number = numberMethod(form.number)"
@@ -45,7 +45,7 @@
             </el-form-item>
           </el-form>
             <el-button @click="restart" size="small" text type="danger">Restart</el-button>
-            <el-table :data="searchDataVal" border style="width: 100%">
+            <el-table v-loading="loading" :data="searchDataVal" border style="width: 100%">
               <el-table-column prop="email" label="Email" width="277" />
               <el-table-column prop="number" label="Number" width="277" />
             </el-table>
@@ -75,38 +75,47 @@ const form = reactive({
   number: '',
   email: '',
 });
+const loading = ref(false);
 
 const mainData = ref([]);
 const searchDataVal = ref([]);
 
 function restart (){
-  searchDataVal.value = []
+  searchDataVal.value = [];
+  form.number = '';
+  form.email = '';
 }
-const submitForm = async (formEl: FormInstance | undefined) => {
+const submitForm = async (formEl) => {
   if (!formEl) return
-  const valid = await formEl.validate();
-  if (valid) {
-    try {
+  try {
+    await formEl.validate();
+    loading.value = true;
       const res = await useCounter.searchData(form);
-      searchDataVal.value = res.data;
-      ElNotification.success({
-        title: 'done',
-        message: 'submit !',
-        showClose: true
-      })
-    }catch (err){
+      if (res.data.length){
+        searchDataVal.value = res.data;
+        loading.value = false;
+        ElNotification.success({
+          title: 'done',
+          message: 'submit !',
+          showClose: true
+        })
+      }else {
+        searchDataVal.value = [];
+        loading.value = false;
+        ElNotification.warning({
+          title: 'warning',
+          message: `not-found`,
+          showClose: true
+        })
+      }
+  }catch(err){
+      searchDataVal.value = [];
+      loading.value = false;
       ElNotification.warning({
-        title: 'warning',
+        title: 'error',
         message: `${err}`,
         showClose: true
       })
-    }
-  } else {
-    ElNotification.warning({
-      title: 'warning',
-      message: 'no valid !',
-      showClose: true
-    })
   }
 }
 
