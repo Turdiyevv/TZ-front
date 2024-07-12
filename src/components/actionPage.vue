@@ -13,10 +13,6 @@
               label="number"
               prop="number"
             >
-<!--              :rules="[-->
-<!--                { required: true, message: 'number is required' },-->
-<!--                { min: 13, message: 'number must be a number' },-->
-<!--              ]"-->
               <el-input clearable
                 v-model="form.number"
                 @input="form.number = numberMethod(form.number)"
@@ -85,38 +81,51 @@ function restart (){
   form.number = '';
   form.email = '';
 }
+
+
+const pendingRequests = ref<Promise<any>[]>([]);
+const setLoading = () => {
+  loading.value = pendingRequests.value.length > 0;
+};
+
 const submitForm = async (formEl) => {
   if (!formEl) return
-  try {
-    await formEl.validate();
-    loading.value = true;
-      const res = await useCounter.searchData(form);
-      if (res.data.length){
-        searchDataVal.value = res.data;
-        loading.value = false;
-        ElNotification.success({
-          title: 'done',
-          message: 'submit !',
-          showClose: true
-        })
-      }else {
+  const request =(async () => {
+    try {
+      await formEl.validate();
+      loading.value = true;
+        const res = await useCounter.searchData(form);
+        if (res.data.length){
+          searchDataVal.value = res.data;
+          loading.value = false;
+          ElNotification.success({
+            title: 'done',
+            message: 'submit !',
+            showClose: true
+          })
+        }else {
+          searchDataVal.value = [];
+          loading.value = false;
+          ElNotification.warning({
+            title: 'warning',
+            message: `not-found`,
+            showClose: true
+          })
+        }
+    }catch(err){
         searchDataVal.value = [];
-        loading.value = false;
         ElNotification.warning({
-          title: 'warning',
-          message: `not-found`,
+          title: 'error',
+          message: `${err}`,
           showClose: true
         })
-      }
-  }catch(err){
-      searchDataVal.value = [];
-      loading.value = false;
-      ElNotification.warning({
-        title: 'error',
-        message: `${err}`,
-        showClose: true
-      })
-  }
+    }finally {
+      pendingRequests.value = pendingRequests.value.filter(p => p !== request);
+      setLoading();
+    }
+  })();
+  pendingRequests.value.push(request);
+  setLoading();
 }
 
 async function getData(){
